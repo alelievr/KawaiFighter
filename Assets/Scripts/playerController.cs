@@ -1,0 +1,20 @@
+﻿using UnityEngine;
+using System.Collections;
+
+public class playerController : MonoBehaviour {
+
+	// Use this for initialization
+	void Start () {
+		
+	}
+	
+	// Update is called once per frame
+	void Update () {
+	
+	}
+	
+	void FixedUpdate() {
+		Vector2 mouvement = new Vector2();
+		
+	}
+}
