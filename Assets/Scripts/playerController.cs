@@ -1,5 +1,6 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿//#define USE_ARDUINO_CONTROLLER
+
+using UnityEngine;
 using UnityStandardAssets.CrossPlatformInput;
 using System.IO.Ports;
 using System;
@@ -17,59 +18,93 @@ public class playerController : MonoBehaviour
 
     //////////////////////////////////////////////
     private System.Threading.Thread arduinoThread = null;
-    private SerialPort sp = new SerialPort("/dev/cu.usbmodem1431", 38400, Parity.None, 8, StopBits.One);
-
+    private SerialPort sp = new SerialPort();
+    
+    float[] accel = new float[3];
+    float[] gyro = new float[3];
+    float[] gyroOffset = new float[3];
     //////////////////////////////////////////////
 
     void arduinoSerialTask()
     {
-		char[]	buff = new char[1024];
+        gyroOffset[0] = -746;
+        gyroOffset[1] = -355;
+        gyroOffset[2] = 459;        sp.BaudRate = 38400;
+        
+        sp.PortName = "/dev/cu.usbmodem1411";
+        sp.DataBits = 8;
+        sp.StopBits = StopBits.One;
+        sp.Parity = Parity.None;
+        sp.Handshake = Handshake.RequestToSend;
         try
         {
             sp.Open();
+            if (!sp.IsOpen)
+                return ;
+            sp.ReadTimeout = 100;
+            sp.WriteTimeout = 100;
             while (true)
             {
-				Debug.Log("readline from serial: ");
-				Debug.Log(sp.Read(buff, 0, buff.Length));
-				System.Threading.Thread.Sleep(20);
-/*                ReadFromArduino(
-                    (string s) => Debug.Log(s),     // Callback
-                        () => Debug.LogError("Error!"), // Error callback
-                        10f                             // Timeout (seconds)
-                    );
-                System.Threading.Thread.Sleep(30);*/
+                sp.Write("d");
+                string accelgyroData = sp.ReadLine();
+
+                string[] list = accelgyroData.Split('\t');
+
+                for (int i = 0; i < 6; i++) {
+                    if (i < 3)
+                        accel[i] = Convert.ToSingle(list[i + 1]);
+                    else
+                        gyro[i - 3] = Convert.ToSingle(list[i + 1]);
+                }
+
+                for (int i = 0; i < 3; i++)
+                    Debug.Log("gyro = " + gyro[i]);
+                for (int i = 0; i < 3; i++)
+                    Debug.Log("accel = " + accel[i]);
+                
+                System.Threading.Thread.Sleep(20);
+                //				System.Threading.Thread.Sleep(2);
+                /*                ReadFromArduino(
+                                    (string s) => Debug.Log(s),     // Callback
+                                        () => Debug.LogError("Error!"), // Error callback
+                                        10f                             // Timeout (seconds)
+                                    );
+                                System.Threading.Thread.Sleep(30);*/
             }
         }
         catch (System.Exception e)
         {
             Debug.Log("failed to open arduino serial port !" + e);
         }
-		Debug.Log("out !");
+        Debug.Log("out !");
     }
 
     // Use this for initialization
     void Start()
     {
-//        arduinoThread = new System.Threading.Thread(arduinoSerialTask);
-//        arduinoThread.Start();
+        #if USE_ARDUINO_CONTROLLER
+            arduinoThread = new System.Threading.Thread(arduinoSerialTask);
+            arduinoThread.Start();
+        #endif
 
-		sp.Open();
         cc = GetComponent<CharacterController>();
         anim = GetComponent<Animator>();
-
     }
-	
-	void OnDestroy() {
-		sp.Close();
-		arduinoThread.Abort();
-	}
+
+    void OnDestroy()
+    {
+        sp.Close();
+        //	arduinoThread.Abort();
+    }
 
     // Update is called once per frame
     void Update()
     {
-/*		if (sp.IsOpen) {
-			Debug.Log(""+ sp.ReadByte());
-		}*/
+        if (Input.GetKeyDown("r")) {
+            gyroOffset = gyro;
+            gameObject.transform.rotation = Quaternion.Euler(0, 0, 0);
+        }
+        gameObject.transform.Rotate((gyro[0] + gyroOffset[0]) / 2000, (gyro[1] + gyroOffset[1]) / 2000, (gyro[2] + gyroOffset[2]) / 2000);
     }
 
     public void ReadFromArduino(Action<string> callback, Action fail = null, float timeout = float.PositiveInfinity)

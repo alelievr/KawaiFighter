@@ -188,6 +188,10 @@ Prefab:
       propertyPath: m_Name
       value: Package04_animChanger
       objectReference: {fileID: 0}
+    - target: {fileID: 14368328, guid: afbf0fc74586842a1960bde1ac12fa78, type: 2}
+      propertyPath: m_Center.y
+      value: .870000005
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_ParentPrefab: {fileID: 100100000, guid: afbf0fc74586842a1960bde1ac12fa78, type: 2}
   m_IsPrefabParent: 0
