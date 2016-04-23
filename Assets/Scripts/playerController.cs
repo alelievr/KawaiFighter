@@ -16,51 +16,63 @@ public class playerController : MonoBehaviour
     private Vector3 inputVelocity;
 
     //////////////////////////////////////////////
-    SerialPort sp = new SerialPort("/dev/cu.usbmodem1431", 115200);
+    private System.Threading.Thread arduinoThread = null;
+    private SerialPort sp = new SerialPort("/dev/cu.usbmodem1431", 38400, Parity.None, 8, StopBits.One);
+
     //////////////////////////////////////////////
 
-    // Use this for initialization
-    void Start()
+    void arduinoSerialTask()
     {
+		char[]	buff = new char[1024];
         try
         {
             sp.Open();
-            StartCoroutine
-            (AsynchronousReadFromArduino
-                ((string s) => Debug.Log(s),     // Callback
-                    () => Debug.LogError("Error!"), // Error callback
-                    10f                             // Timeout (seconds)
-                )
-            );
+            while (true)
+            {
+				Debug.Log("readline from serial: ");
+				Debug.Log(sp.Read(buff, 0, buff.Length));
+				System.Threading.Thread.Sleep(20);
+/*                ReadFromArduino(
+                    (string s) => Debug.Log(s),     // Callback
+                        () => Debug.LogError("Error!"), // Error callback
+                        10f                             // Timeout (seconds)
+                    );
+                System.Threading.Thread.Sleep(30);*/
+            }
         }
         catch (System.Exception e)
         {
             Debug.Log("failed to open arduino serial port !" + e);
         }
+		Debug.Log("out !");
+    }
+
+    // Use this for initialization
+    void Start()
+    {
+//        arduinoThread = new System.Threading.Thread(arduinoSerialTask);
+//        arduinoThread.Start();
+
+		sp.Open();
         cc = GetComponent<CharacterController>();
         anim = GetComponent<Animator>();
 
     }
+	
+	void OnDestroy() {
+		sp.Close();
+		arduinoThread.Abort();
+	}
 
     // Update is called once per frame
     void Update()
     {
+/*		if (sp.IsOpen) {
+			Debug.Log(""+ sp.ReadByte());
+		}*/
     }
 
-    public string ReadFromArduino(int timeout = 0)
-    {
-        sp.ReadTimeout = timeout;
-        try
-        {
-            return sp.ReadLine();
-        }
-        catch (System.Exception)
-        {
-            return null;
-        }
-    }
-
-    public IEnumerator AsynchronousReadFromArduino(Action<string> callback, Action fail = null, float timeout = float.PositiveInfinity)
+    public void ReadFromArduino(Action<string> callback, Action fail = null, float timeout = float.PositiveInfinity)
     {
         DateTime initialTime = DateTime.Now;
         DateTime nowTime;
@@ -70,33 +82,30 @@ public class playerController : MonoBehaviour
 
         do
         {
+            Debug.Log("reading from arduino !");
             try
             {
                 dataString = sp.ReadLine();
-				Debug.Log("dataString: " + dataString);
+                Debug.Log("dataString: " + dataString);
             }
             catch (TimeoutException e)
             {
-				Debug.Log("timeout: " + e);
+                Debug.Log("timeout: " + e);
                 dataString = null;
             }
 
             if (dataString != null)
             {
                 callback(dataString);
-                yield return null;
+                return;
             }
-            else
-                yield return new WaitForSeconds(0.05f);
 
             nowTime = DateTime.Now;
             diff = nowTime - initialTime;
-
         } while (diff.Milliseconds < timeout);
 
         if (fail != null)
             fail();
-        yield return null;
     }
 
     void FixedUpdate()
