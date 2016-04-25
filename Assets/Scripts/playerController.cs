@@ -4,6 +4,7 @@ using UnityEngine;
 using UnityStandardAssets.CrossPlatformInput;
 using System.IO.Ports;
 using System;
+using System.Collections;
 
 public class playerController : MonoBehaviour
 {
@@ -15,6 +16,7 @@ public class playerController : MonoBehaviour
     private CharacterController cc;
     private Animator anim;
     private Vector3 inputVelocity;
+    private bool   move = true;
 
     //////////////////////////////////////////////
     private System.Threading.Thread arduinoThread = null;
@@ -56,7 +58,6 @@ public class playerController : MonoBehaviour
                     else
                         gyro[i - 3] = Convert.ToSingle(list[i + 1]);
                 }
-
                 for (int i = 0; i < 3; i++)
                     Debug.Log("gyro = " + gyro[i]);
                 for (int i = 0; i < 3; i++)
@@ -142,6 +143,11 @@ public class playerController : MonoBehaviour
         if (fail != null)
             fail();
     }
+    
+    IEnumerator    resetMove(float time) {
+        yield return new WaitForSeconds(time);
+        move = true;
+    }
 
     void FixedUpdate()
     {
@@ -160,13 +166,25 @@ public class playerController : MonoBehaviour
                 inputVelocity.y = 0;
             }
         }
+        if (Input.GetKeyDown("q"))
+            anim.SetTrigger("jab");
+        if (Input.GetKeyDown("w")) {
+            move = false;
+            anim.SetTrigger("hikick");
+            cc.SimpleMove(Vector3.zero);
+            StartCoroutine(resetMove(0.43F));
+        }
+        if (Input.GetKeyDown("e"))
+            anim.SetTrigger("spinkick");
+        if (Input.GetKeyDown("r"))
+            anim.SetTrigger("risingp");
         if (inputVelocity.z < 0)
             transform.localRotation = Quaternion.Euler(0, 180, 0);
         else if (inputVelocity.z > 0)
             transform.localRotation = Quaternion.Euler(0, 0, 0);
 
         inputVelocity.y += Physics.gravity.y * gravityScale * Time.deltaTime * 5;
-        if (inputVelocity != Vector3.zero)
+        if (inputVelocity != Vector3.zero && move)
             cc.Move(inputVelocity * Time.deltaTime);
         anim.SetFloat("speed", Mathf.Abs(cc.velocity.z));
     }
